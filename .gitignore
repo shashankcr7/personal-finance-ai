@@ -22,6 +22,9 @@ uploads/
 statements/
 *_statement*.pdf
 *_statement*.csv
+finance docs/
+*.xls
+*.xlsx
 
 # OS / editor
 .DS_Store
