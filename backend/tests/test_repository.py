@@ -97,6 +97,8 @@ def test_fetch_transactions_filters_by_month_and_resolves_category(conn, test_us
     assert len(rows) == 1
     assert rows[0]["description"] == "IN MONTH TXN"
     assert rows[0]["category"] == "Groceries"
+    assert rows[0]["category_id"] == category_id
+    assert rows[0]["bank"] == "TEST FETCH BANK"
     assert isinstance(rows[0]["amount"], Decimal)
 
 
@@ -133,6 +135,22 @@ def test_ensure_default_categories_is_idempotent(conn, test_user_id):
 
     assert names.count("Groceries") == 1
     assert set(repository.DEFAULT_CATEGORIES) <= set(names)
+
+
+def test_create_category_creates_new(conn, test_user_id):
+    category_id = repository.create_category(conn, test_user_id, "TEST CUSTOM CATEGORY")
+
+    categories = repository.fetch_categories(conn, test_user_id)
+    assert any(c["id"] == category_id and c["name"] == "TEST CUSTOM CATEGORY" for c in categories)
+
+
+def test_create_category_returns_existing_id_for_repeat_name_case_insensitive(conn, test_user_id):
+    first_id = repository.create_category(conn, test_user_id, "TEST REPEAT CATEGORY")
+    second_id = repository.create_category(conn, test_user_id, "test repeat category")
+
+    assert first_id == second_id
+    categories = repository.fetch_categories(conn, test_user_id)
+    assert sum(1 for c in categories if c["id"] == first_id) == 1
 
 
 def test_relabel_transaction_reapplies_to_matching_merchant(conn, test_user_id):

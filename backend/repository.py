@@ -139,9 +139,11 @@ def fetch_transactions(conn, user_id, start_date: date, end_date: date) -> list[
         cur.execute(
             """
             SELECT t.id, t.txn_date, t.amount, t.direction, t.description,
-                   t.merchant_normalized,
-                   COALESCE(c.name, 'Uncategorized') AS category
+                   t.merchant_normalized, t.final_category_id AS category_id,
+                   COALESCE(c.name, 'Uncategorized') AS category,
+                   a.institution_name AS bank
             FROM transactions t
+            JOIN accounts a ON a.id = t.account_id
             LEFT JOIN categories c ON c.id = t.final_category_id
             WHERE t.user_id = %s AND t.txn_date >= %s AND t.txn_date < %s
             ORDER BY t.txn_date
@@ -236,6 +238,18 @@ def get_category_id_by_name(conn, user_id, name: str):
         )
         row = cur.fetchone()
         return row[0] if row else None
+
+
+def create_category(conn, user_id, name: str) -> str:
+    existing_id = get_category_id_by_name(conn, user_id, name)
+    if existing_id is not None:
+        return existing_id
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO categories (user_id, name) VALUES (%s, %s) RETURNING id",
+            (user_id, name),
+        )
+        return cur.fetchone()[0]
 
 
 def fetch_category_rules(conn, user_id) -> dict:

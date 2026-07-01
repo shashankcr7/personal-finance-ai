@@ -14,13 +14,15 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { signOut } = useAuth();
+  const { session, signOut } = useAuth();
+  const displayName =
+    (session?.user.user_metadata?.display_name as string | undefined) ?? session?.user.email;
 
   return (
     <nav className="flex h-screen w-56 flex-col border-r border-gray-200 bg-white">
       <div className="border-b border-gray-200 px-4 py-5">
         <p className="text-sm font-semibold text-gray-900">Personal Finance AI</p>
-        <p className="text-xs text-gray-500">Household review</p>
+        <p className="text-xs text-gray-500">{displayName}</p>
       </div>
       <ul className="flex-1 space-y-1 px-2 py-4">
         {NAV_ITEMS.map((item) => {

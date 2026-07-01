@@ -23,6 +23,9 @@ export type LoanStatus = {
   rate: string;
   emi: string;
   months_left: number;
+  projected_months_remaining: number | null;
+  projected_payoff_date: string | null;
+  payoff_note: string | null;
 };
 
 export type GoalProgress = {
@@ -88,4 +91,34 @@ export type RecentUpload = {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+};
+
+export type Transaction = {
+  id: string;
+  txn_date: string;
+  amount: string;
+  direction: "credit" | "debit";
+  description: string;
+  merchant_normalized: string | null;
+  category: string;
+  category_id: string | null;
+  bank: string;
+};
+
+export type Category = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+};
+
+export type Holding = {
+  asset_type: "stock" | "mutual_fund";
+  isin: string;
+  name: string;
+  units: string;
+  nav: string;
+  market_value: string;
+  cost_value: string | null;
+  as_of_date: string;
+  category: "equity" | "debt" | "other";
 };

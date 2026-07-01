@@ -70,8 +70,16 @@ def build_financial_summary(conn, user_id, month: date) -> dict:
         goals_analytics.get_goal_progress(goal, net_worth, month) for goal in goal_rows
     ]
 
+    monthly_expenses = [
+        cashflow.get_cashflow(recent_transactions, m)["expense"] for m in recent_months
+    ]
+    average_monthly_expense = quantize(sum(monthly_expenses, Decimal("0")) / len(monthly_expenses))
+
     leak_results = [
         leaks.detect_idle_cash(bank_balances),
+        leaks.detect_isin_overlap(holdings),
+        leaks.detect_concentration_risk(holdings),
+        leaks.detect_low_cash_buffer(bank_balances, average_monthly_expense),
         leaks.detect_fund_overlap(holdings),
         leaks.detect_regular_vs_direct(holdings),
         leaks.detect_high_interest_vs_low_return(loan_rows, bank_balances),

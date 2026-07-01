@@ -126,6 +126,117 @@ def test_goals_route_includes_identifying_fields(conn, test_user_id):
     assert matching[0]["is_projection"] is True
 
 
+def test_list_transactions_route_filters_by_month(conn, test_user_id):
+    repository.ensure_default_categories(conn, test_user_id)
+    salary_id = repository.get_category_id_by_name(conn, test_user_id, "Salary")
+    account_id = repository.get_or_create_account(conn, test_user_id, "bank", "TEST LIST TXN BANK")
+    repository.insert_transactions(
+        conn,
+        test_user_id,
+        account_id,
+        [
+            {
+                "txn_date": date(2024, 6, 5),
+                "amount": Decimal("1000.00"),
+                "direction": "credit",
+                "description": "TEST LIST TXN ROUTE",
+                "balance_after": Decimal("1000.00"),
+                "final_category_id": salary_id,
+            }
+        ],
+    )
+
+    _apply_overrides(conn, test_user_id)
+    try:
+        client = TestClient(main.app)
+        response = client.get(
+            "/transactions",
+            params={"month": "2024-06-01"},
+            headers={"Authorization": "Bearer test-token"},
+        )
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    matching = [t for t in body if t["description"] == "TEST LIST TXN ROUTE"]
+    assert len(matching) == 1
+    assert matching[0]["category"] == "Salary"
+    assert matching[0]["category_id"] == str(salary_id)
+    assert isinstance(matching[0]["amount"], str)
+
+
+def test_list_categories_route(conn, test_user_id):
+    repository.ensure_default_categories(conn, test_user_id)
+
+    _apply_overrides(conn, test_user_id)
+    try:
+        client = TestClient(main.app)
+        response = client.get("/categories", headers={"Authorization": "Bearer test-token"})
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert any(c["name"] == "Groceries" for c in body)
+
+
+def test_create_category_route(conn, test_user_id):
+    _apply_overrides(conn, test_user_id)
+    try:
+        client = TestClient(main.app)
+        response = client.post(
+            "/categories",
+            json={"name": "TEST ROUTE CUSTOM CATEGORY"},
+            headers={"Authorization": "Bearer test-token"},
+        )
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    category_id = response.json()["id"]
+
+    categories = repository.fetch_categories(conn, test_user_id)
+    assert any(
+        c["id"] == category_id and c["name"] == "TEST ROUTE CUSTOM CATEGORY" for c in categories
+    )
+
+
+def test_list_holdings_route(conn, test_user_id):
+    account_id = repository.get_or_create_account(conn, test_user_id, "demat", "TEST LIST HOLDINGS")
+    repository.insert_holdings(
+        conn,
+        test_user_id,
+        account_id,
+        [
+            {
+                "asset_type": "stock",
+                "isin": "INE000A00099",
+                "name": "TEST ROUTE STOCK",
+                "units": Decimal("5"),
+                "nav": Decimal("100.00"),
+                "market_value": Decimal("500.00"),
+                "cost_value": None,
+                "as_of_date": date(2024, 6, 1),
+                "category": "equity",
+            }
+        ],
+    )
+
+    _apply_overrides(conn, test_user_id)
+    try:
+        client = TestClient(main.app)
+        response = client.get("/holdings", headers={"Authorization": "Bearer test-token"})
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    matching = [h for h in body if h["name"] == "TEST ROUTE STOCK"]
+    assert len(matching) == 1
+    assert matching[0]["market_value"] == "500.00"
+
+
 def test_post_chat_persists_both_turns_and_returns_response(monkeypatch, conn, test_user_id):
     monkeypatch.setattr(
         chat_agent, "chat", lambda conn, user_id, message, history: "fixed reply"

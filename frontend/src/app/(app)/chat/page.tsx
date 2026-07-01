@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { apiGet, apiPostJson, ApiError } from "@/lib/api";
 import type { ChatMessage } from "@/lib/types";
@@ -80,7 +82,13 @@ export default function ChatPage() {
                   : "bg-gray-100 text-gray-800"
               }`}
             >
-              {message.content}
+              {message.role === "assistant" ? (
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                </div>
+              ) : (
+                message.content
+              )}
             </div>
           </div>
         ))}
